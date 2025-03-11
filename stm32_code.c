@@ -367,22 +367,22 @@ void SysTick_Handler(void) {
     static uint32_t tick = 0;
     tick++;
 
-    if (tick >= 20) {  
+    if (tick >= 20) {
         tick = 0;
 
         uint32_t gu32_CounterTicks = TIM2->CNT;
 
         uint32_t gu32_Freq = gu32_CounterTicks * 50;
 
-        int vehicle_speed = gu32_Freq * 0.05134;
+        int vehicle_speed = gu32_Freq / (19.49 * 0.866);
 
         printf("TIM2 CNT = %lu, Frequency = %lu Hz, Speed = %d km/h\n",
                gu32_CounterTicks, gu32_Freq, vehicle_speed);
 
-        if (vehicle_speed >= 30.0) {
-            GPIOA->BSRR = GPIO_PIN_1;  
+        if (vehicle_speed >= 50) {
+            GPIOA->BSRR = GPIO_PIN_1;
         } else {
-            GPIOA->BRR = GPIO_PIN_1;  
+            GPIOA->BRR = GPIO_PIN_1;
         }
 
 
