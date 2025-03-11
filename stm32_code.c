@@ -364,36 +364,30 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void SysTick_Handler(void) {
-		HAL_IncTick();
+    static uint32_t tick = 0;
+    tick++;
 
-	    static uint32_t tick = 0;
-	    tick++;
+    if (tick >= 20) {  
+        tick = 0;
 
-	    if (tick >= 20) { // Update every 5ms
-	        tick = 0;
+        uint32_t gu32_CounterTicks = TIM2->CNT;
 
-	        gu32_CounterTicks = TIM2->CNT;
-	        gu32_Freq = gu32_CounterTicks * 20.0; // Adjust based on clock settings
+        uint32_t gu32_Freq = gu32_CounterTicks * 50;
 
-	        // Speed calculation without angle correction
-	        int vehicle_speed = (gu32_Freq / 31.39) * 3.6; // km/h
+        int vehicle_speed = gu32_Freq * 0.05134;
 
-	        // Ignore low frequencies (noise from small movements)
-	        if (vehicle_speed < 2.0) {
-	            vehicle_speed = 0;
-	        }
+        printf("TIM2 CNT = %lu, Frequency = %lu Hz, Speed = %d km/h\n",
+               gu32_CounterTicks, gu32_Freq, vehicle_speed);
 
-	        printf("TIM2 CNT = %lu, Frequency = %d Hz, Speed = %d km/h\n",
-	               gu32_CounterTicks, gu32_Freq, vehicle_speed);
+        if (vehicle_speed >= 30.0) {
+            GPIOA->BSRR = GPIO_PIN_1;  
+        } else {
+            GPIOA->BRR = GPIO_PIN_1;  
+        }
 
-	        if (vehicle_speed >= 30.0) {
-	            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
-	        } else {
-	            HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
-	        }
 
-	        TIM2->CNT = 0; // Reset counter
-	    }
+        TIM2->CNT = 0;
+    }
 }
 /* USER CODE END 4 */
 
