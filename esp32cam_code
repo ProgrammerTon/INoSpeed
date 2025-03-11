@@ -1,0 +1,79 @@
+#include <esp32cam.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+#define BUTTON_PIN 12  // GPIO12 for physical button
+
+const char* ssid = "signal";
+const char* password = "hardhard";
+const char* serverUrl = "http://192.168.13.134/INoSpeed/upload.php"; 
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(BUTTON_PIN, INPUT_PULLUP);  
+
+    // Connect to WiFi
+    WiFi.begin(ssid, password);
+    Serial.print("Connecting to WiFi");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("\nConnected to WiFi!");
+
+    // Configure Camera
+    esp32cam::Config cfg;
+    cfg.setPins(esp32cam::pins::AiThinker);
+    auto res = esp32cam::Resolution::find(1024, 768);
+    cfg.setResolution(res);
+    cfg.setJpeg(80);
+
+    if (!esp32cam::Camera.begin(cfg)) {
+        Serial.println("Camera init failed!");
+        return;
+    }
+    Serial.println("Camera Ready!");
+}
+
+void loop() {
+    static bool lastState = HIGH;  // Track last button state
+    bool currentState = digitalRead(BUTTON_PIN);
+
+    if (currentState == LOW && lastState == HIGH) {  // Button Pressed
+        delay(200);  // Debounce
+
+        Serial.println("Capturing Image...");
+        auto img = esp32cam::capture();
+        if (img == nullptr) {
+            Serial.println("Image capture failed!");
+            return;
+        }
+
+        String filename = "/image_" + String(millis()) + ".jpg"; 
+
+        Serial.println("Sending image...");
+        if (sendImage(img->data(), img->size(), filename)) {
+            Serial.println("Upload successful!");
+        } else {
+            Serial.println("Upload failed!");
+        }
+    }
+
+    lastState = currentState;  // Update button state
+}
+
+bool sendImage(uint8_t* imageData, size_t imageSize, String filename) {
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi not connected!");
+        return false;
+    }
+
+    HTTPClient http;
+    http.begin(serverUrl);
+    http.addHeader("Content-Type", "image/jpeg");
+    http.addHeader("X-Filename", filename);  
+    int httpResponseCode = http.POST(imageData, imageSize);
+    http.end();
+
+    return (httpResponseCode == 200);
+}
